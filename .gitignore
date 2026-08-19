@@ -1,0 +1,4 @@
+node_modules/
+.env
+.DS_Store
+backend/civicpulse-ai-69532-firebase-adminsdk-fbsvc-7421049f69.json
