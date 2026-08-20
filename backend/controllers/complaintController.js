@@ -15,15 +15,30 @@ const createComplaint = async (req, res) => {
 console.log("Received complaint:", complaint);
 
 if (req.file) {
-    console.log("Received image:", {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-    });
+    // image logging
 } else {
     console.log("No image uploaded");
 }
-        console.log("Sending complaint to Gemini...");
+
+// 👇 ADD THE NEW CODE HERE
+
+const existingSnapshot = await db
+    .collection("complaints")
+    .orderBy("createdAt", "desc")
+    .limit(20)
+    .get();
+
+const existingComplaints = existingSnapshot.docs.map((doc) => ({
+    complaintId: doc.id,
+    title: doc.data().title,
+    description: doc.data().description,
+    location: doc.data().location,
+    category: doc.data().aiAnalysis?.category
+}));
+
+console.log("Existing complaints checked:", existingComplaints.length);
+
+console.log("Sending complaint to Gemini...");
 
         const contents = [
     {
@@ -33,17 +48,29 @@ Return ONLY valid JSON.
 Do not use markdown.
 Do not use code fences.
 
-The JSON must have exactly these four fields:
+The JSON must have exactly these five fields:
 {
   "summary": "short summary of the complaint",
   "category": "complaint category",
   "urgency": "Low, Medium, or High",
-  "department": "appropriate government department"
+  "department": "appropriate government department",
   "recommendedAction": "specific next action the responsible department should take"
 }
 
 Complaint:
 ${JSON.stringify(complaint)}
+
+Existing complaints:
+${JSON.stringify(existingComplaints)}
+
+Determine whether this complaint is a likely duplicate of any existing complaint.
+
+If it is a duplicate, identify the most similar complaint.
+
+Return duplicate information using:
+"isDuplicate": true or false,
+"duplicateOf": "complaint ID or null",
+"duplicateConfidence": "High, Medium, or Low"
 
 If an image is provided, use it as additional evidence when analyzing the complaint.`
     }
