@@ -171,7 +171,7 @@ function App() {
       setLoadingComplaints(true);
 
       const response = await fetch(
-        "http://localhost:3000/api/complaints"
+        "https://civicpulse-ai-udkw.onrender.com/api/complaints"
       );
 
       const data = await response.json();
@@ -218,7 +218,7 @@ function App() {
       }
 
       const response = await fetch(
-        "http://localhost:3000/api/complaints",
+        "https://civicpulse-ai-udkw.onrender.com/api/complaints",
         {
           method: "POST",
           body: formData,
@@ -265,7 +265,7 @@ function App() {
   const updateStatus = async (complaintId, newStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:3000/api/complaints/${complaintId}/status`,
+        `https://civicpulse-ai-udkw.onrender.com/api/complaints/${complaintId}/status`,
         {
           method: "PATCH",
           headers: {
