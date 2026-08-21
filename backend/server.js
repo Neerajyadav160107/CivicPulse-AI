@@ -1,7 +1,12 @@
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 
-const serviceAccount = require("./civicpulse-ai-69532-firebase-adminsdk-fbsvc-7421049f69.json");
+const serviceAccount = JSON.parse(
+    Buffer.from(
+        process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+        "base64"
+    ).toString("utf8")
+);
 
 initializeApp({
     credential: cert(serviceAccount)
