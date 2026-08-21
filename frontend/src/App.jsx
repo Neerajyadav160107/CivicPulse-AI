@@ -2,31 +2,87 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 function App() {
+  // =========================
+  // FORM STATE
+  // =========================
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-
   const [country, setCountry] = useState("India");
   const [region, setRegion] = useState("");
   const [location, setLocation] = useState("");
-
   const [image, setImage] = useState(null);
+
+  // =========================
+  // APP STATE
+  // =========================
 
   const [result, setResult] = useState(null);
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingComplaints, setLoadingComplaints] = useState(true);
 
-  // Search + filters
+  // =========================
+  // FILTER STATE
+  // =========================
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [urgencyFilter, setUrgencyFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [duplicateFilter, setDuplicateFilter] = useState(false);
+
+  // =========================
+  // SCROLL HELPERS
+  // =========================
+
+  const scrollToComplaints = () => {
+    setTimeout(() => {
+      const element = document.getElementById("recent-complaints");
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    }, 100);
+  };
+
+  const handlePriorityClick = (complaintId) => {
+    clearFilters();
+
+    setTimeout(() => {
+      const element = document.getElementById(complaintId);
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+
+        element.classList.add("highlighted");
+
+        setTimeout(() => {
+          element.classList.remove("highlighted");
+        }, 1500);
+      }
+    }, 100);
+  };
 
   // =========================
   // DASHBOARD STATISTICS
   // =========================
 
   const totalComplaints = complaints.length;
+
+  const highUrgency = complaints.filter(
+    (complaint) => complaint.aiAnalysis?.urgency === "High"
+  ).length;
+
+  const duplicateComplaints = complaints.filter(
+    (complaint) => complaint.aiAnalysis?.isDuplicate === true
+  ).length;
 
   const submittedComplaints = complaints.filter(
     (complaint) => complaint.status === "Submitted"
@@ -39,6 +95,34 @@ function App() {
   const resolvedComplaints = complaints.filter(
     (complaint) => complaint.status === "Resolved"
   ).length;
+
+  const resolvedRate =
+    totalComplaints === 0
+      ? 0
+      : Math.round((resolvedComplaints / totalComplaints) * 100);
+
+  // =========================
+  // PRIORITY COMPLAINTS
+  // =========================
+
+  const priorityComplaints = complaints.filter(
+    (complaint) =>
+      complaint.aiAnalysis?.urgency === "High" ||
+      complaint.aiAnalysis?.isDuplicate === true
+  );
+
+  // =========================
+  // CATEGORY COUNTS
+  // =========================
+
+  const categoryCounts = complaints.reduce((acc, complaint) => {
+    const category =
+      complaint.aiAnalysis?.category || "Uncategorized";
+
+    acc[category] = (acc[category] || 0) + 1;
+
+    return acc;
+  }, {});
 
   // =========================
   // FILTER COMPLAINTS
@@ -65,11 +149,16 @@ function App() {
       statusFilter === "All" ||
       complaint.status === statusFilter;
 
+    const matchesDuplicate =
+      !duplicateFilter ||
+      complaint.aiAnalysis?.isDuplicate === true;
+
     return (
       matchesSearch &&
       matchesCategory &&
       matchesUrgency &&
-      matchesStatus
+      matchesStatus &&
+      matchesDuplicate
     );
   });
 
@@ -153,8 +242,7 @@ function App() {
       setLocation("");
       setImage(null);
 
-      const fileInput =
-        document.getElementById("photo-input");
+      const fileInput = document.getElementById("photo-input");
 
       if (fileInput) {
         fileInput.value = "";
@@ -212,6 +300,7 @@ function App() {
     setCategoryFilter("All");
     setUrgencyFilter("All");
     setStatusFilter("All");
+    setDuplicateFilter(false);
   };
 
   // =========================
@@ -221,7 +310,9 @@ function App() {
   return (
     <div className="app">
 
-      {/* HEADER */}
+      {/* =========================
+          HEADER
+      ========================= */}
 
       <header>
         <h1>CivicPulse AI</h1>
@@ -239,24 +330,172 @@ function App() {
 
         <div className="dashboard-stats">
 
-          <div className="stat-card">
+          <div
+            className="stat-card stat-clickable"
+            onClick={() => {
+              clearFilters();
+              scrollToComplaints();
+            }}
+          >
             <span>Total Complaints</span>
             <strong>{totalComplaints}</strong>
           </div>
 
-          <div className="stat-card">
+          <div
+            className="stat-card stat-clickable"
+            onClick={() => {
+              clearFilters();
+              setStatusFilter("Submitted");
+              scrollToComplaints();
+            }}
+          >
             <span>Submitted</span>
             <strong>{submittedComplaints}</strong>
           </div>
 
-          <div className="stat-card">
+          <div
+            className="stat-card stat-clickable"
+            onClick={() => {
+              clearFilters();
+              setStatusFilter("In Progress");
+              scrollToComplaints();
+            }}
+          >
             <span>In Progress</span>
             <strong>{inProgressComplaints}</strong>
           </div>
 
-          <div className="stat-card">
+          <div
+            className="stat-card stat-clickable"
+            onClick={() => {
+              clearFilters();
+              setStatusFilter("Resolved");
+              scrollToComplaints();
+            }}
+          >
             <span>Resolved</span>
             <strong>{resolvedComplaints}</strong>
+          </div>
+
+          <div className="stat-card">
+            <span>📈 Resolved Rate</span>
+            <strong>{resolvedRate}%</strong>
+          </div>
+
+        </div>
+
+        {/* =========================
+            COMPLAINT BREAKDOWN
+        ========================= */}
+
+        <div className="category-breakdown">
+
+          <h2>📊 Complaint Breakdown</h2>
+
+          {/* PRIORITY COMPLAINTS */}
+
+          <div className="priority-section">
+
+            <h2>🚨 Priority Complaints</h2>
+
+            {priorityComplaints.length === 0 ? (
+              <p className="no-priority">
+                No high-priority complaints right now.
+              </p>
+            ) : (
+              <div className="priority-list">
+
+                {priorityComplaints.map((complaint) => (
+                  <div
+                    className="priority-item"
+                    key={complaint.complaintId}
+                    onClick={() =>
+                      handlePriorityClick(
+                        complaint.complaintId
+                      )
+                    }
+                  >
+
+                    <div>
+
+                      <strong>{complaint.title}</strong>
+
+                      <p>
+                        📍 {complaint.location}
+                      </p>
+
+                      <span>
+                        {complaint.aiAnalysis?.category} •{" "}
+                        {complaint.aiAnalysis?.department}
+                      </span>
+
+                    </div>
+
+                    <div className="priority-tags">
+
+                      {complaint.aiAnalysis?.urgency ===
+                        "High" && (
+                        <span className="priority-high">
+                          🔴 High
+                        </span>
+                      )}
+
+                      {complaint.aiAnalysis?.isDuplicate && (
+                        <span className="priority-duplicate">
+                          ⚠️ Duplicate
+                        </span>
+                      )}
+
+                    </div>
+
+                  </div>
+                ))}
+
+              </div>
+            )}
+
+          </div>
+
+          {/* CATEGORY LIST */}
+
+          <div className="category-list">
+
+            {Object.entries(categoryCounts).map(
+              ([category, count]) => (
+                <div
+                  className="category-row category-clickable"
+                  key={category}
+                  onClick={() => {
+                    clearFilters();
+                    setCategoryFilter(category);
+                    scrollToComplaints();
+                  }}
+                >
+
+                  <div className="category-info">
+                    <span>{category}</span>
+                    <strong>{count}</strong>
+                  </div>
+
+                  <div className="category-bar">
+
+                    <div
+                      className="category-bar-fill"
+                      style={{
+                        width: `${
+                          totalComplaints === 0
+                            ? 0
+                            : (count / totalComplaints) * 100
+                        }%`,
+                      }}
+                    />
+
+                  </div>
+
+                </div>
+              )
+            )}
+
           </div>
 
         </div>
@@ -277,9 +516,7 @@ function App() {
               type="text"
               placeholder="e.g. Garbage not collected"
               value={title}
-              onChange={(e) =>
-                setTitle(e.target.value)
-              }
+              onChange={(e) => setTitle(e.target.value)}
               required
             />
 
@@ -300,34 +537,28 @@ function App() {
               type="text"
               placeholder="e.g. Sector 12"
               value={location}
-              onChange={(e) =>
-                setLocation(e.target.value)
-              }
+              onChange={(e) => setLocation(e.target.value)}
               required
             />
 
             <label>Country</label>
 
-<input
-  type="text"
-  value={country}
-  onChange={(e) =>
-    setCountry(e.target.value)
-  }
-  required
-/>
+            <input
+              type="text"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              required
+            />
 
-<label>State / Region</label>
+            <label>State / Region</label>
 
-<input
-  type="text"
-  placeholder="e.g. Uttar Pradesh"
-  value={region}
-  onChange={(e) =>
-    setRegion(e.target.value)
-  }
-  required
-/>
+            <input
+              type="text"
+              placeholder="e.g. Uttar Pradesh"
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              required
+            />
 
             <label>Photo Evidence</label>
 
@@ -346,13 +577,8 @@ function App() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-            >
-              {loading
-                ? "Analyzing..."
-                : "Submit Complaint"}
+            <button type="submit" disabled={loading}>
+              {loading ? "Analyzing..." : "Submit Complaint"}
             </button>
 
           </form>
@@ -365,14 +591,12 @@ function App() {
             <div className="result">
 
               {result.error ? (
-
                 <p className="error">
                   {result.error}
                 </p>
-
               ) : (
-
                 <>
+
                   <div className="complaint-header">
 
                     <div>
@@ -401,6 +625,8 @@ function App() {
 
                   <div className="analysis">
 
+                    {/* SUMMARY */}
+
                     <div className="analysis-item">
                       <span className="label">
                         Short Summary
@@ -410,6 +636,8 @@ function App() {
                         {result.aiAnalysis?.summary}
                       </p>
                     </div>
+
+                    {/* CATEGORY */}
 
                     <div className="analysis-item">
                       <span className="label">
@@ -421,17 +649,23 @@ function App() {
                       </p>
                     </div>
 
+                    {/* URGENCY */}
+
                     <div className="analysis-item">
                       <span className="label">
                         Urgency Level
                       </span>
 
                       <p
-  className={`urgency ${result.aiAnalysis?.urgency?.toLowerCase()}`}
->
-  {result.aiAnalysis?.urgency}
-</p>
+                        className={`urgency ${
+                          result.aiAnalysis?.urgency?.toLowerCase()
+                        }`}
+                      >
+                        {result.aiAnalysis?.urgency}
+                      </p>
                     </div>
+
+                    {/* DEPARTMENT */}
 
                     <div className="analysis-item">
                       <span className="label">
@@ -443,9 +677,53 @@ function App() {
                       </p>
                     </div>
 
-                  </div>
-                </>
+                    {/* IMAGE EVIDENCE */}
 
+                    {result.aiAnalysis?.imageAnalysis
+                      ?.relevant && (
+                      <div className="analysis-item">
+
+                        <span className="label">
+                          📷 Image Evidence
+                        </span>
+
+                        <p>
+                          {
+                            result.aiAnalysis.imageAnalysis
+                              .evidence
+                          }
+                        </p>
+
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* DUPLICATE WARNING */}
+
+                  {result.aiAnalysis?.isDuplicate && (
+                    <div className="duplicate-warning">
+
+                      <strong>
+                        ⚠️ Possible Duplicate Complaint
+                      </strong>
+
+                      <p>
+                        Similar to complaint{" "}
+                        <strong>
+                          {result.aiAnalysis.duplicateOf}
+                        </strong>
+                      </p>
+
+                      <span>
+                        Confidence:{" "}
+                        {result.aiAnalysis.duplicateConfidence}
+                      </span>
+
+                    </div>
+                  )}
+
+                </>
               )}
 
             </div>
@@ -457,7 +735,10 @@ function App() {
             RECENT COMPLAINTS
         ========================= */}
 
-        <div className="card complaints-card">
+        <div
+          id="recent-complaints"
+          className="card complaints-card"
+        >
 
           <div className="complaints-title">
 
@@ -468,14 +749,69 @@ function App() {
               onClick={fetchComplaints}
               disabled={loadingComplaints}
             >
-              {loadingComplaints
-                ? "Loading..."
-                : "Refresh"}
+              {loadingComplaints ? "Loading..." : "Refresh"}
             </button>
 
           </div>
 
-          {/* SEARCH + FILTERS */}
+          {/* =========================
+              ANALYTICS
+          ========================= */}
+
+          <div className="analytics-grid">
+
+            <div
+              className="analytics-card analytics-clickable"
+              onClick={() => {
+                clearFilters();
+                scrollToComplaints();
+              }}
+            >
+              <span>Total Complaints</span>
+              <strong>{totalComplaints}</strong>
+            </div>
+
+            <div
+              className="analytics-card analytics-clickable"
+              onClick={() => {
+                clearFilters();
+                setUrgencyFilter("High");
+                scrollToComplaints();
+              }}
+            >
+              <span>🔴 High Urgency</span>
+              <strong>{highUrgency}</strong>
+            </div>
+
+            <div
+              className="analytics-card analytics-clickable"
+              onClick={() => {
+                clearFilters();
+                setDuplicateFilter(true);
+                scrollToComplaints();
+              }}
+            >
+              <span>⚠️ Duplicates</span>
+              <strong>{duplicateComplaints}</strong>
+            </div>
+
+            <div
+              className="analytics-card analytics-clickable"
+              onClick={() => {
+                clearFilters();
+                setStatusFilter("Resolved");
+                scrollToComplaints();
+              }}
+            >
+              <span>✅ Resolved</span>
+              <strong>{resolvedComplaints}</strong>
+            </div>
+
+          </div>
+
+          {/* =========================
+              FILTERS
+          ========================= */}
 
           <div className="complaint-filters">
 
@@ -494,26 +830,11 @@ function App() {
                 setCategoryFilter(e.target.value)
               }
             >
-              <option value="All">
-                All Categories
-              </option>
-
-              <option value="Sanitation">
-                Sanitation
-              </option>
-
-              <option value="Water Supply">
-                Water Supply
-              </option>
-
-              <option value="Roads">
-                Roads
-              </option>
-
-              <option value="Electricity">
-                Electricity
-              </option>
-
+              <option value="All">All Categories</option>
+              <option value="Sanitation">Sanitation</option>
+              <option value="Water Supply">Water Supply</option>
+              <option value="Roads">Roads</option>
+              <option value="Electricity">Electricity</option>
               <option value="Street Lighting">
                 Street Lighting
               </option>
@@ -525,21 +846,10 @@ function App() {
                 setUrgencyFilter(e.target.value)
               }
             >
-              <option value="All">
-                All Urgency
-              </option>
-
-              <option value="High">
-                High
-              </option>
-
-              <option value="Medium">
-                Medium
-              </option>
-
-              <option value="Low">
-                Low
-              </option>
+              <option value="All">All Urgency</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
             </select>
 
             <select
@@ -548,64 +858,65 @@ function App() {
                 setStatusFilter(e.target.value)
               }
             >
-              <option value="All">
-                All Status
-              </option>
-
-              <option value="Submitted">
-                Submitted
-              </option>
-
+              <option value="All">All Status</option>
+              <option value="Submitted">Submitted</option>
               <option value="In Progress">
                 In Progress
               </option>
-
-              <option value="Resolved">
-                Resolved
-              </option>
+              <option value="Resolved">Resolved</option>
             </select>
+
+            <label className="duplicate-filter">
+
+              <input
+                type="checkbox"
+                checked={duplicateFilter}
+                onChange={(e) =>
+                  setDuplicateFilter(e.target.checked)
+                }
+              />
+
+              Show duplicates only
+
+            </label>
 
           </div>
 
-          {/* CLEAR FILTERS */}
+          {/* =========================
+              CLEAR FILTERS
+          ========================= */}
 
           {(search ||
             categoryFilter !== "All" ||
             urgencyFilter !== "All" ||
-            statusFilter !== "All") && (
-
+            statusFilter !== "All" ||
+            duplicateFilter) && (
             <button
               className="clear-filters-button"
               onClick={clearFilters}
             >
               Clear Filters
             </button>
-
           )}
 
-          {/* RESULTS */}
+          {/* =========================
+              COMPLAINT RESULTS
+          ========================= */}
 
           {loadingComplaints ? (
-
             <p>Loading complaints...</p>
-
           ) : complaints.length === 0 ? (
-
             <p>No complaints yet.</p>
-
           ) : filteredComplaints.length === 0 ? (
-
             <p className="no-results">
               No complaints match your filters.
             </p>
-
           ) : (
-
             <div className="complaints-list">
 
               {filteredComplaints.map((complaint) => (
-
                 <div
+                  id={complaint.complaintId}
                   className="complaint-item"
                   key={complaint.complaintId}
                 >
@@ -619,19 +930,22 @@ function App() {
                       </strong>
 
                       <p className="complaint-location">
-                      📍 {complaint.location}
+                        📍 {complaint.location}
                       </p>
 
                       <p className="complaint-region">
-                        {complaint.region}, {complaint.country}
+                        {complaint.region},{" "}
+                        {complaint.country}
                       </p>
 
                     </div>
 
                     <select
-                      className={`status-select ${complaint.status
-                      ?.toLowerCase()
-                      .replace(" ", "-")}`}
+                      className={`status-select ${
+                        complaint.status
+                          ?.toLowerCase()
+                          .replace(" ", "-")
+                      }`}
                       value={complaint.status}
                       onChange={(e) =>
                         updateStatus(
@@ -640,7 +954,6 @@ function App() {
                         )
                       }
                     >
-
                       <option value="Submitted">
                         Submitted
                       </option>
@@ -652,7 +965,6 @@ function App() {
                       <option value="Resolved">
                         Resolved
                       </option>
-
                     </select>
 
                   </div>
@@ -669,29 +981,70 @@ function App() {
                     </span>
 
                     <span
-                    className={`urgency-badge ${complaint.aiAnalysis?.urgency?.toLowerCase()}`}
-                  >
-                    Urgency: {complaint.aiAnalysis?.urgency}
-                  </span>
+                      className={`urgency-badge ${
+                        complaint.aiAnalysis?.urgency?.toLowerCase()
+                      }`}
+                    >
+                      Urgency:{" "}
+                      {complaint.aiAnalysis?.urgency}
+                    </span>
 
-                                    </div>
-
-                  <div className="recommended-action">
-                    <strong>🤖 AI Recommended Action</strong>
-                    <p>
-                      {complaint.aiAnalysis?.recommendedAction}
-                    </p>
                   </div>
 
-                </div>
+                  <div className="recommended-action">
 
+                    <strong>
+                      🤖 AI Recommended Action
+                    </strong>
+
+                    <p>
+                      {
+                        complaint.aiAnalysis
+                          ?.recommendedAction
+                      }
+                    </p>
+
+                  </div>
+
+                  {/* DUPLICATE WARNING */}
+
+                  {complaint.aiAnalysis?.isDuplicate && (
+                    <div className="duplicate-warning">
+
+                      <strong>
+                        ⚠️ Possible Duplicate Complaint
+                      </strong>
+
+                      <p>
+                        Similar to complaint{" "}
+                        <strong>
+                          {
+                            complaint.aiAnalysis
+                              ?.duplicateOf
+                          }
+                        </strong>
+                      </p>
+
+                      <span>
+                        Confidence:{" "}
+                        {
+                          complaint.aiAnalysis
+                            ?.duplicateConfidence
+                        }
+                      </span>
+
+                    </div>
+                  )}
+
+                </div>
               ))}
 
             </div>
-
           )}
 
-          {/* RESULT COUNT */}
+          {/* =========================
+              RESULT COUNT
+          ========================= */}
 
           {!loadingComplaints &&
             complaints.length > 0 && (
