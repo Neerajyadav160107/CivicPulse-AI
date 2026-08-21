@@ -83,6 +83,22 @@ Google Gemini
   ↓
 Firebase Firestore
 
+## 📸 Screenshots
 
+### Dashboard
+![CivicPulse AI Dashboard](screenshots/dashboard.png)
 
+### Complaint Analytics
+![Complaint Analytics](screenshots/complaint-analytics.png)
 
+### Report an Issue
+![Report Issue](screenshots/report-issue.png)
+
+### AI Analysis
+![AI Complaint Analysis](screenshots/ai-analysis.png)
+
+### Recent Complaints
+![Recent Complaints](screenshots/recent-complaints.png)
+
+### Complaint Filters
+![Complaint Filters](screenshots/complaint-filters.png)
